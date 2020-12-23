@@ -1,0 +1,93 @@
+function [P1, C1, P2, C21, C22, P3, C3] = curve_bezer(P1, rot_1, P3, rot_2, stiffnes, mass, length)
+    
+    unit_v = [1;0;0];
+    length_tol = 0.02;
+    g = 9.82;
+
+    rotm_1 = RotM_3D(rot_1);
+    rotm_2 = RotM_3D(rot_2);
+
+    C1 = P1 + rotm_1*unit_v .* stiffnes; 
+    C3 = P3 - rotm_2*unit_v .* stiffnes; 
+
+    C1_ = P1 + rotm_1*unit_v .* stiffnes*(1+ 0.2*norm(C1-C3,2)); 
+    C3_ = P3 - rotm_2*unit_v .* stiffnes*(1 + 0.2 * norm(C1-C3,2)); 
+    % low energy position 
+
+    P2_start = (P1 + P3)/2;
+
+    internal_forces = 4*((C1-P1) + (C3-P3))/2;
+
+    gravity = 0.5*length*(1-stiffnes) * mass * [0;0;-g];
+
+    P2 = P2_start + internal_forces + gravity;%[0.5; 0; 0.4];
+    
+    a = C3_-C1_;
+    a = a/norm(a);
+    a_old = a;
+    v = cross(a, unit_v);
+    s = norm(v);
+    c = a.'*unit_v;
+    v_x = [0, -v(3), v(2);
+        v(3),0,-v(1);
+        -v(2),v(1),0];
+    if c == -1
+        c = -2;
+        Rotm = eye(3) + v_x + v_x^2 * 1/(1+c);
+    else
+        Rotm = eye(3) + v_x + v_x^2 * 1/(1+c);
+    end
+    C21 = P2 - a*length/6;%Rotm.'*unit_v .* length/6; 
+    C22 = P2 + a*length/6; %Rotm.'*unit_v .* length/6;    
+    curve_L = curve_length(P1, C1, P2, C21, C22, P3, C3, 30)
+    offest = 1;
+    itter = 1;
+    while curve_L < length-length*length_tol || curve_L > length+length*length_tol
+        if curve_L < length
+            offest = offest + abs(length-curve_L) *4/itter % fix dynamic 
+            P2 = P2_start + offest* internal_forces + (1+ (offest-1)*2)*gravity;
+        elseif curve_L > length
+            offest = offest - abs(length-curve_L) *4/itter
+            if offest < 0
+                break;
+            end
+            P2 = P2_start + offest * internal_forces + (1+ (offest-1)*2) * gravity;
+        end
+        itter = itter +1;
+        if itter >50
+           a = C3_-C1_
+           a = a/norm(a)
+           curve_L = curve_length(P1, C1, P2, C21, C22, P3, C3, 30)
+           error('too many ittersations ')
+        end
+        
+        C1 = P1 + rotm_1*unit_v .* stiffnes* (1 + (offest-1)*0.2); 
+        C3 = P3 - rotm_2*unit_v .* stiffnes* (1 + (offest-1)*0.2); 
+        C1_ = P1 + rotm_1*unit_v .* stiffnes*(1+ 0.2*norm(C1-C3,2))* (1 + (offest-1)*0.2); 
+        C3_ = P3 - rotm_2*unit_v .* stiffnes*(1 + 0.2 * norm(C1-C3,2))* (1 + (offest-1)*0.2); 
+
+        a = C3_-C1_;
+        a = a/norm(a);
+        if norm(a-a_old,2) > 1
+            a = a_old;
+        end
+        a_old = a;
+        v = cross(a, unit_v);
+        s = norm(v);
+        c = a.'*unit_v;
+        if c == -1
+            c = -2;
+            Rotm = eye(3) + v_x + v_x^2 * 1/(1+c);
+        else
+            Rotm = eye(3) + v_x + v_x^2 * 1/(1+c);
+        end
+        v_x = [0, -v(3), v(2);
+            v(3),0,-v(1);
+            -v(2),v(1),0];
+        C21 = P2 - a*length/6;% Rotm.'*unit_v .* length/6; 
+        C22 = P2 + a*length/6 ;% Rotm.'*unit_v .* length/6;    
+        curve_L = curve_length(P1, C1, P2, C21, C22, P3, C3, 30)
+    end 
+
+    itter
+end
