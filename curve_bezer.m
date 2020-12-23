@@ -55,7 +55,7 @@ function [P1, C1, P2, C21, C22, P3, C3] = curve_bezer(P1, rot_1, P3, rot_2, stif
             P2 = P2_start + offest * internal_forces + (1+ (offest-1)) * gravity;
         end
         itter = itter +1;
-        if itter >50
+        if itter >100
            offest = offest
            curve_L = curve_length(P1, C1, P2, C21, C22, P3, C3, 30)
            error('too many ittersations ')

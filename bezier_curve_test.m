@@ -1,6 +1,6 @@
 clear all; close all; clc
 %%
-stiffnes = 0.05;
+stiffnes = 0.2;
 unit_v = [1;0;0];
 mass = 0.05;
 g = 9.82;
